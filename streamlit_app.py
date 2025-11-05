@@ -16,7 +16,23 @@ import json
 from datetime import datetime, timedelta
 import streamlit as st
 from dotenv import load_dotenv
-import urllib.parse as urlparse
+
+st.markdown(f"""
+<style>
+:root {{
+  --bg: {BG}; --accent1: {ACCENT1}; --accent2: {ACCENT2}; --text: {TEXT};
+}}
+body {{ background: linear-gradient(180deg,#070607,#0f0f10); color: var(--text); }}
+.header {{ background: linear-gradient(90deg,var(--accent1),var(--accent2)); padding:16px; border-radius:12px; color:white; text-align:center; margin-bottom:14px; }}
+.card {{ background: rgba(255,255,255,0.02); border-radius:12px; padding:12px; margin-bottom:12px; border:1px solid rgba(255,255,255,0.04); }}
+.day-card {{ background: linear-gradient(135deg, rgba(123,44,191,0.06), rgba(255,110,199,0.03)); border-radius:12px; padding:12px; margin-bottom:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }}
+.small {{ color: {MUTED}; font-size:13px; }}
+button.stButton>button {{ background: linear-gradient(90deg,var(--accent2),var(--accent1)); color:white; border-radius:8px; }}
+textarea, input, .stTextInput>div>input {{ background: rgba(255,255,255,0.02); color:var(--text); }}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(f'<div class="header"><h1 style="margin:0">📅 {APP_NAME}</h1><div class="small">Your friendly AI project planner — DayBot helps every task.</div></div>', unsafe_allow_html=True)
 
 
 # Optional AI import
@@ -43,20 +59,9 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")  # e.g. https://xxxx.supabase.co
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")  # anon key
 SUPABASE_CONFIGURED = bool(SUPABASE_URL and SUPABASE_KEY and create_client is not None)
 SUPABASE_URL = "https://uevdkcdwnmuiyofudpuv.supabase.co"
-REDIRECT_URI = "https://daybyday-1.streamlit.app/"  # or deployed app URL
-
-# 1. Google OAuth login link
+REDIRECT_URI = "https://daybyday-1.streamlit.app/"  # or your deployed app
 google_oauth_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={REDIRECT_URI}"
-st.markdown(f"[Sign in with Google]({google_oauth_url})", unsafe_allow_html=True)
 
-# 2. After redirect, parse the access token
-query_params = st.experimental_get_query_params()
-if "access_token" in query_params:
-    token = query_params["access_token"][0]
-    user_info = supabase.auth.get_user(token)
-    st.session_state.user = user_info["user"]["email"]
-    st.experimental_set_query_params()  # clean URL
-    st.success(f"Logged in as {st.session_state.user}")
 
 supabase = None
 if SUPABASE_CONFIGURED:
@@ -106,22 +111,6 @@ BG = "#0f0f10"
 TEXT = "#e9e6ee"
 MUTED = "#bdb7d9"
 
-st.markdown(f"""
-<style>
-:root {{
-  --bg: {BG}; --accent1: {ACCENT1}; --accent2: {ACCENT2}; --text: {TEXT};
-}}
-body {{ background: linear-gradient(180deg,#070607,#0f0f10); color: var(--text); }}
-.header {{ background: linear-gradient(90deg,var(--accent1),var(--accent2)); padding:16px; border-radius:12px; color:white; text-align:center; margin-bottom:14px; }}
-.card {{ background: rgba(255,255,255,0.02); border-radius:12px; padding:12px; margin-bottom:12px; border:1px solid rgba(255,255,255,0.04); }}
-.day-card {{ background: linear-gradient(135deg, rgba(123,44,191,0.06), rgba(255,110,199,0.03)); border-radius:12px; padding:12px; margin-bottom:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }}
-.small {{ color: {MUTED}; font-size:13px; }}
-button.stButton>button {{ background: linear-gradient(90deg,var(--accent2),var(--accent1)); color:white; border-radius:8px; }}
-textarea, input, .stTextInput>div>input {{ background: rgba(255,255,255,0.02); color:var(--text); }}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown(f'<div class="header"><h1 style="margin:0">📅 {APP_NAME}</h1><div class="small">Your friendly AI project planner — DayBot helps every task.</div></div>', unsafe_allow_html=True)
 
 # ------------------------
 # JSON helpers (fallback)
@@ -530,3 +519,4 @@ if st.session_state.user:
     render_app_ui()
 else:
     login_screen()
+

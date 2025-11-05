@@ -18,13 +18,6 @@ import streamlit as st
 from dotenv import load_dotenv
 import urllib.parse as urlparse
 
-query_params = urlparse.parse_qs(st.experimental_get_query_params())
-if "access_token" in query_params:
-    token = query_params["access_token"][0]
-    st.session_state.user = supabase.auth.get_user(token)["email"]
-    st.experimental_set_query_params()  # clean URL
-    st.success(f"Logged in as {st.session_state.user}")
-
 
 # Optional AI import
 try:
@@ -50,8 +43,20 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")  # e.g. https://xxxx.supabase.co
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")  # anon key
 SUPABASE_CONFIGURED = bool(SUPABASE_URL and SUPABASE_KEY and create_client is not None)
 SUPABASE_URL = "https://uevdkcdwnmuiyofudpuv.supabase.co"
-REDIRECT_URI = "https://daybyday-1.streamlit.app/"  # or your deployed app
+REDIRECT_URI = "https://daybyday-1.streamlit.app/"  # or deployed app URL
+
+# 1. Google OAuth login link
 google_oauth_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={REDIRECT_URI}"
+st.markdown(f"[Sign in with Google]({google_oauth_url})", unsafe_allow_html=True)
+
+# 2. After redirect, parse the access token
+query_params = st.experimental_get_query_params()
+if "access_token" in query_params:
+    token = query_params["access_token"][0]
+    user_info = supabase.auth.get_user(token)
+    st.session_state.user = user_info["user"]["email"]
+    st.experimental_set_query_params()  # clean URL
+    st.success(f"Logged in as {st.session_state.user}")
 
 supabase = None
 if SUPABASE_CONFIGURED:

@@ -178,90 +178,135 @@ def load_session():
 # load persisted session on start (local fallback). We'll validate Supabase session below if available.
 load_session()
 
-# ------------------------
-# Supabase auth wrappers
-# ------------------------
-def supa_sign_up(email, password, username=None):
-    """Sign up user with Supabase (email + password). Returns (ok, message_or_data)."""
-    if not SUPABASE_CONFIGURED:
-        return False, "Supabase not configured - falling back to local signup."
-    try:
-        # attempt sign up
-        res = supabase.auth.sign_up({"email": email, "password": password})
-        # store mapping locally (so app can show username)
-        if username:
-            users = read_json(USERS_FILE, {})
-            users[email] = {"username": username, "created_at": datetime.utcnow().isoformat()}
-            write_json(USERS_FILE, users)
-        return True, res
-    except Exception as e:
-        return False, str(e)
+import streamlit as st
+import json
+import os
 
-def supa_sign_in(email, password):
-    """Sign in and store session token locally. Returns (ok, data_or_error)."""
-    if not SUPABASE_CONFIGURED:
-        return False, "Supabase not configured - falling back to local login."
-    try:
-        # new API:
-        res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-        # res may contain 'data' with 'session' and 'user'
-        session = None
-        if isinstance(res, dict):
-            session = res.get("data")
+# ========== Simple user storage ==========
+USER_FILE = "users.json"
+
+# Create empty file if not exists
+if not os.path.exists(USER_FILE):
+    with open(USER_FILE, "w") as f:
+        json.dump({}, f)
+
+def load_users():
+    with open(USER_FILE, "r") as f:
+        return json.load(f)
+
+def save_users(users):
+    with open(USER_FILE, "w") as f:
+        json.dump(users, f, indent=4)
+
+# ========== Auth functions ==========
+def signup(username, password):
+    users = load_users()
+    if username in users:
+        return False, "Username already exists!"
+    users[username] = {"password": password}
+    save_users(users)
+    return True, "Sign-up successful!"
+
+def login(username, password):
+    users = load_users()
+    if username not in users:
+        return False, "User not found!"
+    if users[username]["password"] != password:
+        return False, "Incorrect password!"
+    return True, "Login successful!"
+
+# ========== Navigation Helper ==========
+def redirect_to(page):
+    st.session_state.active_tab = page
+
+# ========== App Setup ==========
+st.set_page_config(page_title="DayByDay", layout="wide")
+
+if "active_tab" not in st.session_state:
+    st.session_state.active_tab = "Login"
+if "username" not in st.session_state:
+    st.session_state.username = None
+
+# ========== Sidebar ==========
+def sidebar():
+    with st.sidebar:
+        st.markdown("### ☰ Navigation")
+        tabs = ["Home", "Planner", "Chat", "Feed"]
+        choice = st.radio("Go to", tabs, label_visibility="collapsed")
+
+        if st.button("Logout", key="logout", help="Log out and return to login"):
+            st.session_state.username = None
+            redirect_to("Login")
+
+        return choice
+
+# ========== Pages ==========
+def show_login():
+    st.title("🔐 Login to DayByDay")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        ok, msg = login(username, password)
+        if ok:
+            st.session_state.username = username
+            redirect_to("Home")
         else:
-            session = getattr(res, "data", None)
-        # try to extract token/session and expiry
-        if isinstance(session, dict) and session.get("session"):
-            access_token = session["session"].get("access_token")
-            expires_at = session["session"].get("expires_at")  # may be timestamp int or iso
-            # set user email and compute login_expires (24 hours from now) for app
-            st.session_state.user_email = email
-            # determine username via local mapping if present
-            users = read_json(USERS_FILE, {})
-            mapped = users.get(email, {})
-            if mapped and mapped.get("username"):
-                st.session_state.user = mapped.get("username")
-            else:
-                st.session_state.user = email  # fallback
-            # set 24-hour login expiry
-            st.session_state.login_expires = (datetime.utcnow() + timedelta(hours=24)).isoformat()
-            # persist minimal session info
-            sess = read_json(SESSION_FILE, {})
-            sess["supabase_token"] = access_token
-            sess["supabase_token_expires"] = expires_at
-            sess["user_email"] = email
-            sess["user"] = st.session_state.user
-            sess["login_expires"] = st.session_state.login_expires
-            write_json(SESSION_FILE, sess)
-            save_session()
-            return True, session
-        # fallback behaviors for other client shapes:
-        # if res contains access_token directly (older client)
-        if res and hasattr(res, "access_token"):
-            access_token = getattr(res, "access_token")
-            st.session_state.user_email = email
-            users = read_json(USERS_FILE, {})
-            mapped = users.get(email, {})
-            st.session_state.user = mapped.get("username") if mapped.get("username") else email
-            st.session_state.login_expires = (datetime.utcnow() + timedelta(hours=24)).isoformat()
-            sess = read_json(SESSION_FILE, {})
-            sess["supabase_token"] = access_token
-            sess["user_email"] = email
-            sess["user"] = st.session_state.user
-            sess["login_expires"] = st.session_state.login_expires
-            write_json(SESSION_FILE, sess)
-            save_session()
-            return True, res
-        # last fallback: treat as success but store email
-        st.session_state.user_email = email
-        users = read_json(USERS_FILE, {})
-        mapped = users.get(email, {})
-        st.session_state.user = mapped.get("username") if mapped.get("username") else email
-        st.session_state.login_expires = (datetime.utcnow() + timedelta(hours=24)).isoformat()
-        save_session()
-        return True, res
-    except Exception as e:
-        return False, str(e)
+            st.error(msg)
+
+    st.markdown("Don't have an account?")
+    if st.button("Sign Up"):
+        redirect_to("Signup")
+
+def show_signup():
+    st.title("📝 Create your DayByDay Account")
+    username = st.text_input("Choose a Username")
+    password = st.text_input("Choose a Password", type="password")
+
+    if st.button("Sign Up"):
+        ok, msg = signup(username, password)
+        if ok:
+            st.success(msg)
+            redirect_to("Login")
+        else:
+            st.error(msg)
+
+    if st.button("Back to Login"):
+        redirect_to("Login")
+
+def show_home():
+    st.title(f"👋 Welcome, {st.session_state.username}!")
+    st.write("This is your Home Page.")
+    if st.button("Generate Project"):
+        redirect_to("Planner")
+
+def show_planner():
+    st.title("🗓️ Planner")
+    st.write("Here you can plan your day and manage tasks.")
+
+def show_chat():
+    st.title("💬 Chat")
+    st.write("Chat with your AI assistant here.")
+
+def show_feed():
+    st.title("📢 Feed")
+    st.write("View updates and posts here.")
+
+# ========== Router ==========
+if st.session_state.active_tab == "Login":
+    show_login()
+elif st.session_state.active_tab == "Signup":
+    show_signup()
+else:
+    current_tab = sidebar()
+
+    if current_tab == "Home":
+        show_home()
+    elif current_tab == "Planner":
+        show_planner()
+    elif current_tab == "Chat":
+        show_chat()
+    elif current_tab == "Feed":
+        show_feed()
 
 def supa_get_user_from_token():
     """Try to read stored token in SESSION_FILE and validate with Supabase; return user email or None."""

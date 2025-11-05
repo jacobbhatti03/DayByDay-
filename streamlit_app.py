@@ -175,10 +175,6 @@ def load_session():
 # load persisted session on start (local fallback). We'll validate Supabase session below if available.
 load_session()
 
-import streamlit as st
-import json
-import os
-
 # ========== Simple user storage ==========
 USER_FILE = "users.json"
 
@@ -217,7 +213,7 @@ def redirect_to(page):
     st.session_state.active_tab = page
 
 # ========== App Setup ==========
-st.set_page_config(page_title="DayByDay", layout="wide")
+# st.set_page_config(page_title="DayByDay", layout="wide")
 
 if "active_tab" not in st.session_state:
     st.session_state.active_tab = "Login"

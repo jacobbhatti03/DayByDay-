@@ -437,6 +437,38 @@ def login_screen():
                 st.markdown(f"[Click here to sign in with Google]({google_oauth_url})", unsafe_allow_html=True)
                 st.info("Redirecting to Google for authentication...")
 
+# --- SIGN UP FORM ---
+st.subheader("Create a new account")
+
+signup_username = st.text_input("Username", key="signup_name")
+signup_email = st.text_input("Email", key="signup_email")
+signup_pwd = st.text_input("Password", type="password", key="signup_pwd")
+
+# --- SIGN UP BUTTON ---
+if st.button("Sign Up", key="signup_btn"):
+    if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():
+        st.error("Enter username, email & password.")
+    else:
+        if SUPABASE_CONFIGURED and supabase is not None:
+            try:
+                res = supabase.auth.admin.create_user({
+                    "email": signup_email.strip(),
+                    "password": signup_pwd.strip(),
+                    "email_confirm": True,  # skip confirmation
+                })
+                st.session_state.user = signup_username.strip()
+                st.session_state.active_tab = "Home"
+                save_session()
+                st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
+            except Exception as e:
+                st.error(f"Sign-up failed: {e}")
+        else:
+            # Local fallback
+            st.session_state.user = signup_username.strip()
+            st.session_state.active_tab = "Home"
+            save_session()
+            st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
+
 # --- SIGN UP ---
 if st.button("Sign Up", key="signup_btn"):
     if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():

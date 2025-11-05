@@ -453,36 +453,36 @@ def login_ui():
                 save_session()
                 redirect_to("Home")  # switch to Home tab
 
-   with col2:
-       # right column: Email sign up (Supabase) or local fallback
-       new_username = st.text_input("Username", key="signup_username_input")
-       new_email = st.text_input("Email", key="signup_user_input")
-       new_pwd = st.text_input("Password", type="password", key="signup_pass_input")
+    with col2:
+        # right column: Email sign up (Supabase) or local fallback
+        new_username = st.text_input("Username", key="signup_username_input")
+        new_email = st.text_input("Email", key="signup_user_input")
+        new_pwd = st.text_input("Password", type="password", key="signup_pass_input")
 
-       if st.button("Sign Up", key="signup_btn"):
-           if not new_username.strip() or not new_email.strip() or not new_pwd.strip():
-               st.error("Enter username, email & password.")
-           else:
-               if SUPABASE_CONFIGURED:
-                   # pass email & password to Supabase
-                   ok, res = supa_sign_up(new_email.strip(), new_pwd)
+        if st.button("Sign Up", key="signup_btn"):
+            if not new_username.strip() or not new_email.strip() or not new_pwd.strip():
+                st.error("Enter username, email & password.")
+            else:
+                if SUPABASE_CONFIGURED:
+                    # pass email & password to Supabase
+                    ok, res = supa_sign_up(new_email.strip(), new_pwd)
+                    if ok:
+                        st.success("Sign-up initiated. Check your email for confirmation.")
+                        # store username locally for greeting (until Supabase supports metadata)
+                        st.session_state.username = new_username.strip()
+                    else:
+                        st.error(f"Sign-up failed: {res}")
+                else:
+                    # local fallback
+                   ok, m = signup_user(new_email.strip(), new_pwd)
                    if ok:
-                       st.success("Sign-up initiated. Check your email for confirmation.")
-                       # store username locally for greeting (until Supabase supports metadata)
+                       st.success(m)
+                       st.session_state.user = new_email.strip()  # keep email for session
                        st.session_state.username = new_username.strip()
+                       save_session()
+                       st.session_state.active_tab = "Home"
                    else:
-                       st.error(f"Sign-up failed: {res}")
-               else:
-                   # local fallback
-                  ok, m = signup_user(new_email.strip(), new_pwd)
-                  if ok:
-                      st.success(m)
-                      st.session_state.user = new_email.strip()  # keep email for session
-                      st.session_state.username = new_username.strip()
-                      save_session()
-                      st.session_state.active_tab = "Home"
-                  else:
-                      st.error(m)
+                       st.error(m)
 
 
 # ------------------------

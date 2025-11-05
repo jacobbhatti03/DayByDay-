@@ -437,39 +437,32 @@ def login_screen():
                 st.markdown(f"[Click here to sign in with Google]({google_oauth_url})", unsafe_allow_html=True)
                 st.info("Redirecting to Google for authentication...")
 
-    # ----------------
-    # RIGHT PANEL: SIGN UP
-    # ----------------
-    with col2:
-        st.markdown("### Sign Up")
-        signup_username = st.text_input("Username", key="signup_username_input")
-        signup_email = st.text_input("Email", key="signup_email_input")
-        signup_pwd = st.text_input("Password", type="password", key="signup_pwd_input")
-        
-       if st.button("Sign Up", key="signup_btn"):
-           if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():
+# --- SIGN UP ---
+if st.button("Sign Up", key="signup_btn"):
+    if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():
         st.error("Enter username, email & password.")
-       else:
-           if SUPABASE_CONFIGURED:
-               # Directly create the user in Supabase and consider them logged in
-               try:
-                   res = supabase.auth.admin.create_user({
-                       "email": signup_email.strip(),
-                       "password": signup_pwd.strip(),
-                       "email_confirm": True,   # bypass confirmation
-                   })
-                   st.session_state.user = signup_username.strip()  # logged in as username
-                   st.session_state.active_tab = "Home"
-                   save_session()
-                   st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
-               except Exception as e:
-                   st.error(f"Sign-up failed: {e}")
-           else:
-               # Local fallback
-               st.session_state.user = signup_username.strip()
-               st.session_state.active_tab = "Home"
-               save_session()
-               st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
+    else:
+        if SUPABASE_CONFIGURED:
+            # Directly create the user and skip email confirmation
+            try:
+                res = supabase.auth.admin.create_user({
+                    "email": signup_email.strip(),
+                    "password": signup_pwd.strip(),
+                    "email_confirm": True,  # skip confirmation
+                })
+                st.session_state.user = signup_username.strip()  # logged in immediately
+                st.session_state.active_tab = "Home"
+                save_session()
+                st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
+            except Exception as e:
+                st.error(f"Sign-up failed: {e}")
+        else:
+            # Local fallback if Supabase is not configured
+            st.session_state.user = signup_username.strip()
+            st.session_state.active_tab = "Home"
+            save_session()
+            st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
+
 # ------------------------
 # Main App Logic
 # ------------------------

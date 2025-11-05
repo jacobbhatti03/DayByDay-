@@ -432,58 +432,79 @@ def render_app_ui():
         for f in feed:
             st.markdown(f"<div class='card'><strong>{f['user']}</strong> ({f['time']})<br>{f['text']}<br><em>Suggestions:</em> {', '.join(f.get('suggestions',[]))}</div>", unsafe_allow_html=True)
 
-# ------------------------
-# Login / Signup UI
-# ------------------------
-def login_ui():
-    st.markdown("### Login or Signup")
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
+def login_screen():
+    st.markdown('<div class="card"><strong>Welcome — Log in or Sign up to start DayByDay</strong></div>', unsafe_allow_html=True)
+    
     col1, col2 = st.columns(2)
+    
+    # ----------------
+    # LEFT PANEL: LOGIN
+    # ----------------
     with col1:
-        if st.button("Login"):
-            ok, res = supa_sign_in(email, password)
-            if ok:
-                st.success("Logged in!")
-                st.session_state.user = email
+        st.markdown("### Login")
+        login_email = st.text_input("Email", key="login_input")
+        login_pwd = st.text_input("Password", type="password", key="login_pwd_input")
+        if st.button("Login", key="login_btn"):
+            if SUPABASE_CONFIGURED:
+                ok, res = supa_sign_in(login_email.strip(), login_pwd)
+                if ok:
+                    user_meta = res.get("data", {}).get("user", {}).get("user_metadata", {})
+                    st.session_state.user = user_meta.get("username") or login_email.strip()
+                    st.session_state.active_tab = "Home"
+                    save_session()
+                    st.experimental_rerun()
+                else:
+                    st.error(f"Login failed: {res}")
             else:
-                st.error(res)
-                # After successful login or local signup
-                st.session_state.user = email.strip()
+                # Local fallback (optional)
+                st.session_state.user = login_email.strip()
+                st.session_state.active_tab = "Home"
                 save_session()
-                redirect_to("Home")  # switch to Home tab
-
+                st.experimental_rerun()
+    
+    # ----------------
+    # RIGHT PANEL: SIGN UP
+    # ----------------
     with col2:
-        # right column: Email sign up (Supabase) or local fallback
-        new_username = st.text_input("Username", key="signup_username_input")
-        new_email = st.text_input("Email", key="signup_user_input")
-        new_pwd = st.text_input("Password", type="password", key="signup_pass_input")
-
+        st.markdown("### Sign Up")
+        signup_username = st.text_input("Username", key="signup_username_input")
+        signup_email = st.text_input("Email", key="signup_email_input")
+        signup_pwd = st.text_input("Password", type="password", key="signup_pwd_input")
+        
         if st.button("Sign Up", key="signup_btn"):
-            if not new_username.strip() or not new_email.strip() or not new_pwd.strip():
+            if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():
                 st.error("Enter username, email & password.")
             else:
                 if SUPABASE_CONFIGURED:
-                    # pass email & password to Supabase
-                    ok, res = supa_sign_up(new_email.strip(), new_pwd)
+                    # Use Supabase email/password sign up
+                    ok, res = supa_sign_up(signup_email.strip(), signup_pwd.strip())
                     if ok:
-                        st.success("Sign-up initiated. Check your email for confirmation.")
-                        # store username locally for greeting (until Supabase supports metadata)
-                        st.session_state.username = new_username.strip()
+                        st.info("Sign-up initiated. Please check your email and complete verification.")
+                        # Save username locally until login completes
+                        st.session_state.pending_user = {"username": signup_username.strip(), "email": signup_email.strip()}
                     else:
                         st.error(f"Sign-up failed: {res}")
                 else:
-                    # local fallback
-                   ok, m = signup_user(new_email.strip(), new_pwd)
-                   if ok:
-                       st.success(m)
-                       st.session_state.user = new_email.strip()  # keep email for session
-                       st.session_state.username = new_username.strip()
-                       save_session()
-                       st.session_state.active_tab = "Home"
-                   else:
-                       st.error(m)
-
+                    # Local fallback
+                    st.session_state.user = signup_username.strip()
+                    st.session_state.active_tab = "Home"
+                    save_session()
+                    st.experimental_rerun()
+        
+        st.markdown("---")
+        st.markdown("Or sign up with Google:")
+        if SUPABASE_CONFIGURED:
+            if st.button("Sign up with Google"):
+                # Redirect to Supabase Google OAuth
+                redirect_url = st.secrets.get("REDIRECT_URL", "http://localhost:8501")  # or your deployed URL
+                try:
+                    supabase.auth.sign_in_with_oauth(
+                        provider="google",
+                        options={"redirectTo": redirect_url}
+                    )
+                    st.info("Redirecting to Google for authentication...")
+                except Exception as e:
+                    st.error(f"OAuth failed: {e}")
 
 # ------------------------
 # Main App Logic
@@ -491,4 +512,4 @@ def login_ui():
 if st.session_state.user:
     render_app_ui()
 else:
-    login_ui()
+    login_screen()

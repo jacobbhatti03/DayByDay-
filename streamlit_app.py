@@ -17,23 +17,7 @@ from datetime import datetime, timedelta
 import streamlit as st
 from dotenv import load_dotenv
 
-st.markdown(f"""
-<style>
-:root {{
-  --bg: {BG}; --accent1: {ACCENT1}; --accent2: {ACCENT2}; --text: {TEXT};
-}}
-body {{ background: linear-gradient(180deg,#070607,#0f0f10); color: var(--text); }}
-.header {{ background: linear-gradient(90deg,var(--accent1),var(--accent2)); padding:16px; border-radius:12px; color:white; text-align:center; margin-bottom:14px; }}
-.card {{ background: rgba(255,255,255,0.02); border-radius:12px; padding:12px; margin-bottom:12px; border:1px solid rgba(255,255,255,0.04); }}
-.day-card {{ background: linear-gradient(135deg, rgba(123,44,191,0.06), rgba(255,110,199,0.03)); border-radius:12px; padding:12px; margin-bottom:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }}
-.small {{ color: {MUTED}; font-size:13px; }}
-button.stButton>button {{ background: linear-gradient(90deg,var(--accent2),var(--accent1)); color:white; border-radius:8px; }}
-textarea, input, .stTextInput>div>input {{ background: rgba(255,255,255,0.02); color:var(--text); }}
-</style>
-""", unsafe_allow_html=True)
-
 st.markdown(f'<div class="header"><h1 style="margin:0">📅 {APP_NAME}</h1><div class="small">Your friendly AI project planner — DayBot helps every task.</div></div>', unsafe_allow_html=True)
-
 
 # Optional AI import
 try:
@@ -110,6 +94,21 @@ ACCENT2 = "#ff6ec7"
 BG = "#0f0f10"
 TEXT = "#e9e6ee"
 MUTED = "#bdb7d9"
+
+st.markdown(f"""
+<style>
+:root {{
+  --bg: {BG}; --accent1: {ACCENT1}; --accent2: {ACCENT2}; --text: {TEXT};
+}}
+body {{ background: linear-gradient(180deg,#070607,#0f0f10); color: var(--text); }}
+.header {{ background: linear-gradient(90deg,var(--accent1),var(--accent2)); padding:16px; border-radius:12px; color:white; text-align:center; margin-bottom:14px; }}
+.card {{ background: rgba(255,255,255,0.02); border-radius:12px; padding:12px; margin-bottom:12px; border:1px solid rgba(255,255,255,0.04); }}
+.day-card {{ background: linear-gradient(135deg, rgba(123,44,191,0.06), rgba(255,110,199,0.03)); border-radius:12px; padding:12px; margin-bottom:12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }}
+.small {{ color: {MUTED}; font-size:13px; }}
+button.stButton>button {{ background: linear-gradient(90deg,var(--accent2),var(--accent1)); color:white; border-radius:8px; }}
+textarea, input, .stTextInput>div>input {{ background: rgba(255,255,255,0.02); color:var(--text); }}
+</style>
+""", unsafe_allow_html=True)
 
 
 # ------------------------

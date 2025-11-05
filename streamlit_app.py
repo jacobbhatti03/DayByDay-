@@ -446,30 +446,31 @@ def login_screen():
         signup_email = st.text_input("Email", key="signup_email_input")
         signup_pwd = st.text_input("Password", type="password", key="signup_pwd_input")
         
-        if st.button("Sign Up", key="signup_btn"):
-            if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():
-                st.error("Enter username, email & password.")
-            else:
-                if SUPABASE_CONFIGURED:
-                    ok, res = supa_sign_up(signup_email.strip(), signup_pwd.strip())
-                    if ok:
-                        st.info("Sign-up initiated. Please check your email and complete verification.")
-                        st.session_state.pending_user = {"username": signup_username.strip(), "email": signup_email.strip()}
-                    else:
-                        st.error(f"Sign-up failed: {res}")
-                else:
-                    # Local fallback
-                    st.session_state.user = signup_username.strip()
-                    st.session_state.active_tab = "Home"
-                    save_session()
-                    st.success("Signed up (local fallback).")
-        
-        # Google OAuth button (sign up)
-        if SUPABASE_CONFIGURED:
-            google_oauth_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={REDIRECT_URI}"
-            if st.button("Sign up with Google"):
-                st.markdown(f"[Click here to sign up with Google]({google_oauth_url})", unsafe_allow_html=True)
-                st.info("Redirecting to Google for authentication...")
+       if st.button("Sign Up", key="signup_btn"):
+           if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():
+               st.error("Enter username, email & password.")
+       else:
+           if SUPABASE_CONFIGURED:
+               # Directly create the user in Supabase and consider them logged in
+               try:
+                   res = supabase.auth.admin.create_user({
+                       "email": signup_email.strip(),
+                       "password": signup_pwd.strip(),
+                       "email_confirm": True,   # bypass confirmation
+                   })
+                   st.session_state.user = signup_username.strip()  # logged in as username
+                   st.session_state.active_tab = "Home"
+                   save_session()
+                   st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
+               except Exception as e:
+                   st.error(f"Sign-up failed: {e}")
+           else:
+               # Local fallback
+               st.session_state.user = signup_username.strip()
+               st.session_state.active_tab = "Home"
+               save_session()
+               st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
+
 
 # ------------------------
 # Main App Logic

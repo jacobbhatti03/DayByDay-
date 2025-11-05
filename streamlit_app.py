@@ -1,28 +1,23 @@
 # app.py
 """
 DayByDay — Full interactive Streamlit app
-- Forced login/signup (Supabase email auth when configured)
-- Top tabs (Home, Planner, Chat, Feed)
-- 8-day planner with cards, checkboxes, add/edit/remove tasks
-- Per-task AI assistance (Ask DayBot)
-- Chat that can modify plan or day
-- Feed with AI next-step suggestions
-- Persistent local JSON storage for session + projects (fallback)
-- Gemini 2.5 Flash integration (if GEMINI_API_KEY present) with mock fallback
 """
 
 import os
 import json
 from datetime import datetime, timedelta
-import streamlit as st
 from dotenv import load_dotenv
+import streamlit as st
 
-
-# ✅ Define first
+# ✅ Must come before ANY Streamlit element
 APP_NAME = "DayByDay"
 st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
 
+# ✅ Everything else comes after this
+load_dotenv()
 
+# Example safe code below
+st.markdown(f"## Welcome to {APP_NAME}")
 
 # Optional AI import
 try:

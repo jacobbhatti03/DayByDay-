@@ -29,6 +29,9 @@ try:
 except Exception:
     create_client = None
 
+
+st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
+
 # ------------------------
 # Config & env
 # ------------------------
@@ -81,7 +84,6 @@ if GEMINI_API_KEY and genai:
 # ------------------------
 # Streamlit page config and CSS
 # ------------------------
-st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
 
 ACCENT1 = "#7b2cbf"
 ACCENT2 = "#ff6ec7"

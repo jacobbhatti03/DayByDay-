@@ -13,42 +13,16 @@ DayByDay — Full interactive Streamlit app
 
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 import streamlit as st
 from dotenv import load_dotenv
 
 # ------------------------
-# App constants (must be defined BEFORE first Streamlit call)
+# Streamlit page config (must be first)
 # ------------------------
 APP_NAME = "DayByDay"
 DAYBOT_NAME = "DayBot"
-
-ACCENT1 = "#7b2cbf"
-ACCENT2 = "#ff6ec7"
-BG = "#0f0f10"
-TEXT = "#e9e6ee"
-MUTED = "#bdb7d9"
-
-# ------------------------
-# Streamlit page config (must be first Streamlit command)
-# ------------------------
 st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
-
-# ------------------------
-# Optional AI import
-# ------------------------
-try:
-    import google.generativeai as genai
-except Exception:
-    genai = None
-
-# ------------------------
-# Supabase client
-# ------------------------
-try:
-    from supabase import create_client
-except Exception:
-    create_client = None
 
 # ------------------------
 # Config & env
@@ -56,6 +30,18 @@ except Exception:
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL_NAME = "gemini-2.5-flash"
+
+# Optional AI import
+try:
+    import google.generativeai as genai
+except Exception:
+    genai = None
+
+# Supabase client
+try:
+    from supabase import create_client
+except Exception:
+    create_client = None
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
@@ -68,12 +54,38 @@ if SUPABASE_CONFIGURED:
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception:
-        supabase = None
         SUPABASE_CONFIGURED = False
+        supabase = None
 
 # ------------------------
-# CSS styling
+# Files (local persistence fallback)
 # ------------------------
+USERS_FILE = "users.json"
+PROJECTS_FILE = "projects.json"
+SESSION_FILE = "session.json"
+FEED_FILE = "feed.json"
+EXAMPLES_FILE = "ai_examples.json"
+
+# ensure files exist (fallback)
+def ensure_file(path, default):
+    if not os.path.exists(path):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(default, f, ensure_ascii=False, indent=2)
+
+for path, default in [
+    (USERS_FILE, {}), (PROJECTS_FILE, {}), (SESSION_FILE, {}), (FEED_FILE, []), (EXAMPLES_FILE, [])
+]:
+    ensure_file(path, default)
+
+# ------------------------
+# CSS
+# ------------------------
+ACCENT1 = "#7b2cbf"
+ACCENT2 = "#ff6ec7"
+BG = "#0f0f10"
+TEXT = "#e9e6ee"
+MUTED = "#bdb7d9"
+
 st.markdown(f"""
 <style>
 :root {{
@@ -91,15 +103,9 @@ textarea, input, .stTextInput>div>input {{ background: rgba(255,255,255,0.02); c
 
 st.markdown(f'<div class="header"><h1 style="margin:0">📅 {APP_NAME}</h1><div class="small">Your friendly AI project planner — DayBot helps every task.</div></div>', unsafe_allow_html=True)
 
-
 # ------------------------
-# JSON helpers (fallback)
+# JSON helpers
 # ------------------------
-# 1. Define file constants
-SESSION_FILE = "session.json"
-# ... other files
-
-# 2. JSON helpers
 def read_json(path, default):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -111,30 +117,13 @@ def write_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-# 3. Ensure files exist
-ensure_file(SESSION_FILE, {})
-
-# 4. Session state initialization
+# ------------------------
+# Session state init
+# ------------------------
 if "user" not in st.session_state:
     st.session_state.user = None
-# ...
-
-# 5. Load session
-def load_session():
-    data = read_json(SESSION_FILE, {})
-    for k in ["active_tab", "user", "project", "chat_history"]:
-        if k in data:
-            st.session_state[k] = data[k]
-
-load_session()
-
-# ------------------------
-# Session state initialization (must run before UI)
-# ------------------------
-if "user" not in st.session_state:
-    st.session_state.user = None  # email when logged in
 if "active_tab" not in st.session_state:
-    st.session_state.active_tab = "Home"  # controlled only after login
+    st.session_state.active_tab = "Home"
 if "project" not in st.session_state:
     st.session_state.project = {"title":"", "constraints":"", "raw_plan":"", "tasks":[[] for _ in range(8)], "generated_at": None}
 if "chat_history" not in st.session_state:
@@ -143,7 +132,7 @@ if "last_ai_error" not in st.session_state:
     st.session_state.last_ai_error = None
 
 # ------------------------
-# Persistence helpers: session & projects (Supabase when available)
+# Load / Save session
 # ------------------------
 def save_session():
     payload = {
@@ -156,66 +145,12 @@ def save_session():
 
 def load_session():
     data = read_json(SESSION_FILE, {})
-    for k in ["active_tab", "user", "project", "chat_history"]:
+    for k in ["active_tab","user","project","chat_history"]:
         if k in data:
             st.session_state[k] = data[k]
 
 load_session()
 
-# ------------------------
-# Supabase auth wrappers
-# ------------------------
-def supa_sign_up(email, password):
-    if not SUPABASE_CONFIGURED:
-        return False, "Supabase not configured - falling back to local signup."
-    try:
-        res = supabase.auth.sign_up({"email": email, "password": password})
-        return True, res
-    except Exception as e:
-        return False, str(e)
-
-def supa_sign_in(email, password):
-    if not SUPABASE_CONFIGURED:
-        return False, "Supabase not configured - falling back to local login."
-    try:
-        res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-        session = res.get("data") if isinstance(res, dict) else getattr(res, "data", None)
-        if isinstance(session, dict) and session.get("session"):
-            access_token = session["session"].get("access_token")
-            expires_at = session["session"].get("expires_at")
-            st.session_state.user = email
-            sess = read_json(SESSION_FILE, {})
-            sess["supabase_token"] = access_token
-            sess["supabase_token_expires"] = expires_at
-            sess["user"] = email
-            write_json(SESSION_FILE, sess)
-            return True, session
-        st.session_state.user = email
-        return True, res
-    except Exception as e:
-        return False, str(e)
-
-def supa_get_user_from_token():
-    if not SUPABASE_CONFIGURED:
-        return None
-    sess = read_json(SESSION_FILE, {})
-    token = sess.get("supabase_token")
-    if not token:
-        return None
-    try:
-        user_info = supabase.auth.get_user(token) if hasattr(supabase.auth, "get_user") else None
-        if user_info:
-            if isinstance(user_info, dict) and user_info.get("data") and user_info["data"].get("user"):
-                return user_info["data"]["user"].get("email")
-            if hasattr(user_info, "user"):
-                return getattr(user_info, "user").get("email")
-        return None
-    except Exception:
-        return None
-
-# ------------------------
-# Save / load projects & feed
-# ------------------------
 def save_project_to_history():
     if SUPABASE_CONFIGURED and st.session_state.get("user"):
         try:

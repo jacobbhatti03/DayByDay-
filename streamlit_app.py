@@ -91,9 +91,15 @@ textarea, input, .stTextInput>div>input {{ background: rgba(255,255,255,0.02); c
 
 st.markdown(f'<div class="header"><h1 style="margin:0">📅 {APP_NAME}</h1><div class="small">Your friendly AI project planner — DayBot helps every task.</div></div>', unsafe_allow_html=True)
 
+
 # ------------------------
 # JSON helpers (fallback)
 # ------------------------
+# 1. Define file constants
+SESSION_FILE = "session.json"
+# ... other files
+
+# 2. JSON helpers
 def read_json(path, default):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -104,6 +110,23 @@ def read_json(path, default):
 def write_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+# 3. Ensure files exist
+ensure_file(SESSION_FILE, {})
+
+# 4. Session state initialization
+if "user" not in st.session_state:
+    st.session_state.user = None
+# ...
+
+# 5. Load session
+def load_session():
+    data = read_json(SESSION_FILE, {})
+    for k in ["active_tab", "user", "project", "chat_history"]:
+        if k in data:
+            st.session_state[k] = data[k]
+
+load_session()
 
 # ------------------------
 # Session state initialization (must run before UI)

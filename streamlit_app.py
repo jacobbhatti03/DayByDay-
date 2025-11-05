@@ -391,20 +391,26 @@ def login_screen():
             if SUPABASE_CONFIGURED:
                 ok, res = supa_sign_in(login_email.strip(), login_pwd)
                 if ok:
-                    user_meta = res.get("data", {}).get("user", {}).get("user_metadata", {})
-                    st.session_state.user = user_meta.get("username") or login_email.strip()
+                    st.session_state.user = login_email.strip()
                     st.session_state.active_tab = "Home"
                     save_session()
-                    st.experimental_rerun()
+                    st.success("Logged in!")
                 else:
                     st.error(f"Login failed: {res}")
             else:
-                # Local fallback (optional)
+                # Local fallback
                 st.session_state.user = login_email.strip()
                 st.session_state.active_tab = "Home"
                 save_session()
-                st.experimental_rerun()
-    
+                st.success("Logged in (local fallback).")
+        
+        # Google OAuth button (login)
+        if SUPABASE_CONFIGURED:
+            google_oauth_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={REDIRECT_URI}"
+            if st.button("Sign in with Google"):
+                st.markdown(f"[Click here to sign in with Google]({google_oauth_url})", unsafe_allow_html=True)
+                st.info("Redirecting to Google for authentication...")
+
     # ----------------
     # RIGHT PANEL: SIGN UP
     # ----------------
@@ -419,11 +425,9 @@ def login_screen():
                 st.error("Enter username, email & password.")
             else:
                 if SUPABASE_CONFIGURED:
-                    # Use Supabase email/password sign up
                     ok, res = supa_sign_up(signup_email.strip(), signup_pwd.strip())
                     if ok:
                         st.info("Sign-up initiated. Please check your email and complete verification.")
-                        # Save username locally until login completes
                         st.session_state.pending_user = {"username": signup_username.strip(), "email": signup_email.strip()}
                     else:
                         st.error(f"Sign-up failed: {res}")
@@ -432,22 +436,14 @@ def login_screen():
                     st.session_state.user = signup_username.strip()
                     st.session_state.active_tab = "Home"
                     save_session()
-                    st.experimental_rerun()
+                    st.success("Signed up (local fallback).")
         
-        st.markdown("---")
-        st.markdown("Or sign up with Google:")
+        # Google OAuth button (sign up)
         if SUPABASE_CONFIGURED:
+            google_oauth_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={REDIRECT_URI}"
             if st.button("Sign up with Google"):
-                # Redirect to Supabase Google OAuth
-                redirect_url = st.secrets.get("REDIRECT_URL", "http://localhost:8501")  # or your deployed URL
-                try:
-                    supabase.auth.sign_in_with_oauth(
-                        provider="google",
-                        options={"redirectTo": redirect_url}
-                    )
-                    st.info("Redirecting to Google for authentication...")
-                except Exception as e:
-                    st.error(f"OAuth failed: {e}")
+                st.markdown(f"[Click here to sign up with Google]({google_oauth_url})", unsafe_allow_html=True)
+                st.info("Redirecting to Google for authentication...")
 
 # ------------------------
 # Main App Logic
@@ -456,4 +452,5 @@ if st.session_state.user:
     render_app_ui()
 else:
     login_screen()
+
 

@@ -599,35 +599,38 @@ def login_screen():
 # Sidebar (3-line vertical) - navigation & logout
 # ------------------------
 def render_sidebar():
-    st.sidebar.markdown("<div class='sidebar-buttons'>", unsafe_allow_html=True)
-    # show current page and disable that button visually by not performing redirect if clicked
-    if st.sidebar.button("Home", key="sb_home"):
-        redirect_to("Home")
-    if st.sidebar.button("Planner", key="sb_planner"):
-        redirect_to("Planner")
-    if st.sidebar.button("Chat", key="sb_chat"):
-        redirect_to("Chat")
-    if st.sidebar.button("Feed", key="sb_feed"):
-        redirect_to("Feed")
+    # Sidebar header
+    st.sidebar.markdown(f"### {APP_NAME}")
+    st.sidebar.markdown(f"Welcome, **{st.session_state.user}** 👋")
+
+    # Navigation
+    tabs = ["Home", "Planner", "Chat", "Feed"]
+    selected_tab = st.sidebar.radio("Navigate", tabs, index=tabs.index(st.session_state.active_tab))
+    st.session_state.active_tab = selected_tab
+    save_session()
+
+    # Spacer to push logout to bottom
+    st.sidebar.markdown("<div style='flex:1; height:250px;'></div>", unsafe_allow_html=True)
+
+    # Logout section (bottom fixed)
     st.sidebar.markdown("---")
-    if st.sidebar.button("Logout", key="sb_logout"):
-        # central logout
+    logout = st.sidebar.button("Logout")
+    if logout:
+        # Clear user session (no rerun)
         if SUPABASE_CONFIGURED:
             try:
                 supabase.auth.sign_out()
             except Exception:
                 pass
         st.session_state.user = None
-        st.session_state.user_email = None
-        # clear stored supabase token if any
-        sess = read_json(SESSION_FILE, {})
-        sess.pop("supabase_token", None)
-        sess.pop("supabase_token_expires", None)
-        sess.pop("login_expires", None)
-        write_json(SESSION_FILE, sess)
+        st.session_state.active_tab = "Home"
         save_session()
-        st.experimental_rerun()
-    st.sidebar.markdown("</div>", unsafe_allow_html=True)
+        st.sidebar.success("You’ve been logged out.")
+
+    st.sidebar.markdown(
+        "<p style='text-align:center; color:gray; font-size:12px;'>DayByDay © 2025</p>",
+        unsafe_allow_html=True
+    )
 
 # ------------------------
 # UI: Top tabs and pages (only after login)
@@ -672,7 +675,7 @@ def render_app_ui():
             write_json(SESSION_FILE, sess)
             save_session()
             st.success("Logged out.")
-            st.experimental_rerun()
+            st.stop()
 
     # Planner tab
     with tabs[1]:

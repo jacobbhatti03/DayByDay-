@@ -17,15 +17,34 @@ from datetime import datetime, timedelta
 import streamlit as st
 from dotenv import load_dotenv
 
-st.markdown(f'<div class="header"><h1 style="margin:0">📅 {APP_NAME}</h1><div class="small">Your friendly AI project planner — DayBot helps every task.</div></div>', unsafe_allow_html=True)
+# ------------------------
+# App constants (must be defined BEFORE first Streamlit call)
+# ------------------------
+APP_NAME = "DayByDay"
+DAYBOT_NAME = "DayBot"
 
+ACCENT1 = "#7b2cbf"
+ACCENT2 = "#ff6ec7"
+BG = "#0f0f10"
+TEXT = "#e9e6ee"
+MUTED = "#bdb7d9"
+
+# ------------------------
+# Streamlit page config (must be first Streamlit command)
+# ------------------------
+st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
+
+# ------------------------
 # Optional AI import
+# ------------------------
 try:
     import google.generativeai as genai
 except Exception:
     genai = None
 
+# ------------------------
 # Supabase client
+# ------------------------
 try:
     from supabase import create_client
 except Exception:
@@ -38,14 +57,11 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL_NAME = "gemini-2.5-flash"
 
-# Supabase config from env (or you can hardcode)
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")  # e.g. https://xxxx.supabase.co
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")  # anon key
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_CONFIGURED = bool(SUPABASE_URL and SUPABASE_KEY and create_client is not None)
-SUPABASE_URL = "https://uevdkcdwnmuiyofudpuv.supabase.co"
-REDIRECT_URI = "https://daybyday-1.streamlit.app/"  # or your deployed app
+REDIRECT_URI = "https://daybyday-1.streamlit.app/"
 google_oauth_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={REDIRECT_URI}"
-
 
 supabase = None
 if SUPABASE_CONFIGURED:
@@ -55,46 +71,9 @@ if SUPABASE_CONFIGURED:
         supabase = None
         SUPABASE_CONFIGURED = False
 
-APP_NAME = "DayByDay"
-DAYBOT_NAME = "DayBot"
-
-# Files (local persistence fallback)
-USERS_FILE = "users.json"
-PROJECTS_FILE = "projects.json"
-SESSION_FILE = "session.json"
-FEED_FILE = "feed.json"
-EXAMPLES_FILE = "ai_examples.json"
-
-# ensure files exist (fallback)
-def ensure_file(path, default):
-    if not os.path.exists(path):
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(default, f, ensure_ascii=False, indent=2)
-
-for p, d in [
-    (USERS_FILE, {}), (PROJECTS_FILE, {}), (SESSION_FILE, {}), (FEED_FILE, []), (EXAMPLES_FILE, [])
-]:
-    ensure_file(p, d)
-
-# configure AI if key present
-if GEMINI_API_KEY and genai:
-    try:
-        genai.configure(api_key=GEMINI_API_KEY)
-    except Exception:
-        # will fallback at call time
-        pass
-
 # ------------------------
-# Streamlit page config and CSS
+# CSS styling
 # ------------------------
-st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
-
-ACCENT1 = "#7b2cbf"
-ACCENT2 = "#ff6ec7"
-BG = "#0f0f10"
-TEXT = "#e9e6ee"
-MUTED = "#bdb7d9"
-
 st.markdown(f"""
 <style>
 :root {{
@@ -110,6 +89,7 @@ textarea, input, .stTextInput>div>input {{ background: rgba(255,255,255,0.02); c
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown(f'<div class="header"><h1 style="margin:0">📅 {APP_NAME}</h1><div class="small">Your friendly AI project planner — DayBot helps every task.</div></div>', unsafe_allow_html=True)
 
 # ------------------------
 # JSON helpers (fallback)

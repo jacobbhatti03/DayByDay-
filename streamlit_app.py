@@ -240,7 +240,12 @@ if st.session_state.user is None:
 else:
     st.sidebar.title("📂 Navigation")
     tabs = ["Home", "Planner", "Logout"]
-    choice = st.sidebar.radio("Go to", tabs, index=tabs.index(st.session_state.active_tab))
+    active = st.session_state.get("active_tab", "Home")
+    if active not in tabs:
+        active = "Home"
+    choice = st.sidebar.radio("Go to", tabs, index=tabs.index(active))
+    st.session_state.active_tab = choice
+
 
     if choice == "Logout":
         st.session_state.user = None

@@ -405,62 +405,59 @@ def supa_sign_in(email, password):
 if "users" not in st.session_state:
     st.session_state.users = {
         "admin": {"password": "admin123"}  # default admin user
-    }
-
-# ------------------------------
-# Handle login/signup UI
-# ------------------------------
-def login_page():
-    st.title("📅 DayByDay")
-    st.write("Your friendly AI project planner — DayBot helps every task.")
-
-    tab1, tab2 = st.tabs(["🔑 Login", "🆕 Sign Up"])
-
-    # ------------------ LOGIN ------------------
-    with tab1:
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_pwd")
-
-        if st.button("Login", key="login_btn"):
-            users = st.session_state.users
-            if username in users and users[username]["password"] == password:
-                st.session_state.logged_in = True
-                st.session_state.current_user = username
-                st.success(f"Welcome back, {username}!")
-            else:
-                st.error("Invalid username or password")
-
-    # ------------------ SIGN UP ------------------
-    with tab2:
-        new_user = st.text_input("Choose a username", key="signup_username")
-        new_pwd = st.text_input("Choose a password", type="password", key="signup_pwd")
-
-        if st.button("Sign Up", key="signup_btn"):
-            users = st.session_state.users
-            if not new_user.strip() or not new_pwd.strip():
-                st.warning("Please fill all fields.")
-            elif new_user in users:
-                st.error("Username already exists.")
-            else:
-                users[new_user] = {"password": new_pwd}
-                st.session_state.users = users
-                st.session_state.logged_in = True
-                st.session_state.current_user = new_user
-                st.success(f"Account created successfully! Welcome, {new_user}.")
-
-# ------------------------------
-# Main app after login
-# ------------------------------
-def main_app():
-    st.sidebar.title(f"👋 Hello, {st.session_state.current_user}")
-    st.sidebar.button("Logout", on_click=lambda: st.session_state.clear())
-    st.write("### Welcome to DayByDay Planner")
-    st.info("Start planning your day — your personal AI assistant is ready!")
-
-# ------------------------------
-# Page Router
-# ------------------------------
-if "logged_in" in st.session_state and st.session_state.logged_in:
+    }nd st.session_state.logged_in:
     main_app()
 else:
     login_page()
+import streamlit as st
+
+if "page" not in st.session_state:
+    st.session_state.page = "login"
+if "users" not in st.session_state:
+    st.session_state.users = {"admin": {"password": "admin123"}}
+
+def show_login():
+    st.title("🔑 Login")
+    username = st.text_input("Username", key="login_username")
+    password = st.text_input("Password", type="password", key="login_password")
+    if st.button("Login"):
+        users = st.session_state.users
+        if username in users and users[username]["password"] == password:
+            st.session_state.current_user = username
+            st.session_state.page = "main"
+        else:
+            st.error("Invalid credentials")
+
+def show_signup():
+    st.title("🆕 Sign Up")
+    username = st.text_input("New username", key="signup_username")
+    password = st.text_input("New password", type="password", key="signup_password")
+    if st.button("Sign Up"):
+        users = st.session_state.users
+        if username in users:
+            st.error("User already exists.")
+        else:
+            users[username] = {"password": password}
+            st.session_state.users = users
+            st.session_state.current_user = username
+            st.session_state.page = "main"
+
+def show_main():
+    st.sidebar.write(f"👋 Welcome, {st.session_state.current_user}")
+    if st.sidebar.button("Logout"):
+        st.session_state.page = "login"
+        st.session_state.current_user = None
+    st.title("📅 DayByDay")
+    st.write("Your friendly AI project planner — DayBot helps every task.")
+
+# --------------------------
+# Router
+# --------------------------
+if st.session_state.page == "login":
+    tab1, tab2 = st.tabs(["Login", "Sign Up"])
+    with tab1:
+        show_login()
+    with tab2:
+        show_signup()
+elif st.session_state.page == "main":
+    show_main()

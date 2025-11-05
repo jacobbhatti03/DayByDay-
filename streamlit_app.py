@@ -222,6 +222,46 @@ def render_home():
     else:
         st.info("No project yet. Fill in details and click Generate.")
 
+# ------------------------
+# Sidebar + Tabs + Sign out
+# ------------------------
+def render_app_ui():
+    tabs = ["Home", "Planner", "Chat", "Feed"]
+
+    # Sidebar layout
+    with st.sidebar:
+        st.markdown(f"### 📅 {APP_NAME}")
+        st.markdown(f"Hello, **{st.session_state.user}** 👋")
+        st.markdown("---")
+
+        # Safe active_tab selection
+        active = st.session_state.get("active_tab", "Home")
+        if active not in tabs:
+            active = "Home"
+
+        choice = st.radio("Go to", tabs, index=tabs.index(active))
+        st.session_state.active_tab = choice
+
+        # Push Sign Out button to bottom
+        st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+        st.markdown("---")
+        if st.button("🚪 Sign Out", key="logout_btn"):
+            if SUPABASE_CONFIGURED:
+                try:
+                    supabase.auth.sign_out()
+                except Exception:
+                    pass
+            st.session_state.user = None
+            sess = read_json(SESSION_FILE, {})
+            sess.pop("supabase_token", None)
+            sess.pop("supabase_token_expires", None)
+            write_json(SESSION_FILE, sess)
+            save_session()
+            st.success("Logged out.")
+            st.session_state.active_tab = "Home"
+            st.rerun()
+
+
 def render_planner():
     proj = st.session_state.project
     st.header(f"📅 {proj['title'] or 'Your 8-Day Plan'}")

@@ -17,6 +17,11 @@ from datetime import datetime, timedelta
 import streamlit as st
 from dotenv import load_dotenv
 
+# Define constants first
+APP_NAME = "DayByDay"
+
+st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
+
 # Optional AI import
 try:
     import google.generativeai as genai
@@ -28,12 +33,6 @@ try:
     from supabase import create_client
 except Exception:
     create_client = None
-
-
-# Define constants first
-APP_NAME = "DayByDay"
-
-st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
 
 # ------------------------
 # Config & env

@@ -1,17 +1,17 @@
+import streamlit as st
+st.set_page_config(page_title="DayByDay", page_icon="📅", layout="wide")
 # app.py
 """
 DayByDay — Full interactive Streamlit app
 """
-
 import os
 import json
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-import streamlit as st
+
 
 # ✅ Must come before ANY Streamlit element
 APP_NAME = "DayByDay"
-st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
 
 # ✅ Everything else comes after this
 load_dotenv()

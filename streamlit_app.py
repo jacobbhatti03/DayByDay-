@@ -399,108 +399,68 @@ def supa_sign_in(email, password):
     except Exception as e:
         return False, str(e)
         
-# login system
+# ------------------------------
+# Mock database stored in session (since Streamlit Cloud doesn't allow file writes)
+# ------------------------------
+if "users" not in st.session_state:
+    st.session_state.users = {
+        "admin": {"password": "admin123"}  # default admin user
+    }
 
-def login_screen():
-    st.markdown('<div class="card"><strong>Welcome — Log in or Sign up to start DayByDay</strong></div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    # ----------------
-    # LEFT PANEL: LOGIN
-    # ----------------
-    with col1:
-        st.markdown("### Login")
-        login_email = st.text_input("Email", key="login_input")
-        login_pwd = st.text_input("Password", type="password", key="login_pwd_input")
+# ------------------------------
+# Handle login/signup UI
+# ------------------------------
+def login_page():
+    st.title("📅 DayByDay")
+    st.write("Your friendly AI project planner — DayBot helps every task.")
+
+    tab1, tab2 = st.tabs(["🔑 Login", "🆕 Sign Up"])
+
+    # ------------------ LOGIN ------------------
+    with tab1:
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_pwd")
+
         if st.button("Login", key="login_btn"):
-            if SUPABASE_CONFIGURED:
-                ok, res = supa_sign_in(login_email.strip(), login_pwd)
-                if ok:
-                    st.session_state.user = login_email.strip()
-                    st.session_state.active_tab = "Home"
-                    save_session()
-                    st.success("Logged in!")
-                else:
-                    st.error(f"Login failed: {res}")
+            users = st.session_state.users
+            if username in users and users[username]["password"] == password:
+                st.session_state.logged_in = True
+                st.session_state.current_user = username
+                st.success(f"Welcome back, {username}!")
             else:
-                # Local fallback
-                st.session_state.user = login_email.strip()
-                st.session_state.active_tab = "Home"
-                save_session()
-                st.success("Logged in (local fallback).")
-        
-        # Google OAuth button (login)
-        if SUPABASE_CONFIGURED:
-            google_oauth_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={REDIRECT_URI}"
-            if st.button("Sign in with Google"):
-                st.markdown(f"[Click here to sign in with Google]({google_oauth_url})", unsafe_allow_html=True)
-                st.info("Redirecting to Google for authentication...")
+                st.error("Invalid username or password")
 
-# --- SIGN UP FORM ---
-st.subheader("Create a new account")
+    # ------------------ SIGN UP ------------------
+    with tab2:
+        new_user = st.text_input("Choose a username", key="signup_username")
+        new_pwd = st.text_input("Choose a password", type="password", key="signup_pwd")
 
-signup_username = st.text_input("Username", key="signup_name")
-signup_email = st.text_input("Email", key="signup_email")
-signup_pwd = st.text_input("Password", type="password", key="signup_pwd")
+        if st.button("Sign Up", key="signup_btn"):
+            users = st.session_state.users
+            if not new_user.strip() or not new_pwd.strip():
+                st.warning("Please fill all fields.")
+            elif new_user in users:
+                st.error("Username already exists.")
+            else:
+                users[new_user] = {"password": new_pwd}
+                st.session_state.users = users
+                st.session_state.logged_in = True
+                st.session_state.current_user = new_user
+                st.success(f"Account created successfully! Welcome, {new_user}.")
 
-# --- SIGN UP BUTTON ---
-if st.button("Sign Up", key="signup_btn"):
-    if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():
-        st.error("Enter username, email & password.")
-    else:
-        if SUPABASE_CONFIGURED and supabase is not None:
-            try:
-                res = supabase.auth.admin.create_user({
-                    "email": signup_email.strip(),
-                    "password": signup_pwd.strip(),
-                    "email_confirm": True,  # skip confirmation
-                })
-                st.session_state.user = signup_username.strip()
-                st.session_state.active_tab = "Home"
-                save_session()
-                st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
-            except Exception as e:
-                st.error(f"Sign-up failed: {e}")
-        else:
-            # Local fallback
-            st.session_state.user = signup_username.strip()
-            st.session_state.active_tab = "Home"
-            save_session()
-            st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
+# ------------------------------
+# Main app after login
+# ------------------------------
+def main_app():
+    st.sidebar.title(f"👋 Hello, {st.session_state.current_user}")
+    st.sidebar.button("Logout", on_click=lambda: st.session_state.clear())
+    st.write("### Welcome to DayByDay Planner")
+    st.info("Start planning your day — your personal AI assistant is ready!")
 
-# --- SIGN UP ---
-if st.button("Sign Up", key="signup_btn"):
-    if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():
-        st.error("Enter username, email & password.")
-    else:
-        if SUPABASE_CONFIGURED:
-            # Directly create the user and skip email confirmation
-            try:
-                res = supabase.auth.admin.create_user({
-                    "email": signup_email.strip(),
-                    "password": signup_pwd.strip(),
-                    "email_confirm": True,  # skip confirmation
-                })
-                st.session_state.user = signup_username.strip()  # logged in immediately
-                st.session_state.active_tab = "Home"
-                save_session()
-                st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
-            except Exception as e:
-                st.error(f"Sign-up failed: {e}")
-        else:
-            # Local fallback if Supabase is not configured
-            st.session_state.user = signup_username.strip()
-            st.session_state.active_tab = "Home"
-            save_session()
-            st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
-
-# ------------------------
-# Main App Logic
-# ------------------------
-if st.session_state.user:
-    render_app_ui()
+# ------------------------------
+# Page Router
+# ------------------------------
+if "logged_in" in st.session_state and st.session_state.logged_in:
+    main_app()
 else:
-    login_screen()
-
-
+    login_page()

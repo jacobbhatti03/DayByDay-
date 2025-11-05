@@ -375,6 +375,32 @@ def render_app_ui():
         for f in feed:
             st.markdown(f"<div class='card'><strong>{f['user']}</strong> ({f['time']})<br>{f['text']}<br><em>Suggestions:</em> {', '.join(f.get('suggestions',[]))}</div>", unsafe_allow_html=True)
 
+# ------------------------
+# Supabase auth wrappers
+# ------------------------
+def supa_sign_up(email, password):
+    if not SUPABASE_CONFIGURED:
+        return False, "Supabase not configured - falling back to local signup."
+    try:
+        res = supabase.auth.sign_up({"email": email, "password": password})
+        return True, res
+    except Exception as e:
+        return False, str(e)
+
+def supa_sign_in(email, password):
+    if not SUPABASE_CONFIGURED:
+        return False, "Supabase not configured - falling back to local login."
+    try:
+        res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+        # If login succeeds, save session locally
+        st.session_state.user = email
+        save_session()
+        return True, res
+    except Exception as e:
+        return False, str(e)
+        
+# login system
+
 def login_screen():
     st.markdown('<div class="card"><strong>Welcome — Log in or Sign up to start DayByDay</strong></div>', unsafe_allow_html=True)
     

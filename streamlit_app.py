@@ -18,9 +18,16 @@ import streamlit as st
 from dotenv import load_dotenv
 
 
-st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
-# Define constants first
+import streamlit as st
+import os
+import json
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# ✅ Define first
 APP_NAME = "DayByDay"
+st.set_page_config(page_title=APP_NAME, page_icon="📅", layout="wide")
+
 
 
 # Optional AI import

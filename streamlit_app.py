@@ -448,7 +448,7 @@ def login_screen():
         
        if st.button("Sign Up", key="signup_btn"):
            if not signup_username.strip() or not signup_email.strip() or not signup_pwd.strip():
-               st.error("Enter username, email & password.")
+        st.error("Enter username, email & password.")
        else:
            if SUPABASE_CONFIGURED:
                # Directly create the user in Supabase and consider them logged in
@@ -470,8 +470,6 @@ def login_screen():
                st.session_state.active_tab = "Home"
                save_session()
                st.success(f"Signed up and logged in as {signup_username.strip()} ✅")
-
-
 # ------------------------
 # Main App Logic
 # ------------------------

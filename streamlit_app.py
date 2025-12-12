@@ -7,12 +7,25 @@ from pathlib import Path
 from dotenv import load_dotenv
 import streamlit as st
 
+# Load .env (works locally). On Streamlit Cloud, prefer st.secrets.
 load_dotenv()
+
 DATA_DIR = Path(os.getenv("DATA_DIR", "daybyday_data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 USERS_FILE = DATA_DIR / "users.json"
 PROJECTS_FILE = DATA_DIR / "projects.json"
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+# ✅ Robust key loading: Streamlit secrets > env var
+def get_gemini_key() -> str:
+    try:
+        # Streamlit Cloud: set in app secrets
+        if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+            return str(st.secrets["GEMINI_API_KEY"]).strip()
+    except Exception:
+        pass
+    return os.getenv("GEMINI_API_KEY", "").strip()
+
+GEMINI_API_KEY = get_gemini_key()
 
 try:
     import google.generativeai as genai
@@ -81,57 +94,51 @@ def delete_user_project(username, title):
         del all_proj[username][title]
         write_json(PROJECTS_FILE, all_proj)
 
-# ✅ FIXED: Gemini call using modern google.generativeai API
+# ✅ FIXED/ROBUST GEMINI CALL (this will still fail if your key is revoked)
 def call_gemini_text(prompt: str, max_output_tokens: int = 400):
-    if not HAS_GENAI or not GEMINI_API_KEY:
-        return False, "Gemini not configured. Add GEMINI_API_KEY in .env."
+    if not HAS_GENAI:
+        return False, "Gemini SDK not installed or failed to import."
+    if not GEMINI_API_KEY:
+        return False, "GEMINI_API_KEY not found. Add it to .env (local) or Streamlit Secrets (cloud)."
 
     try:
-        if hasattr(genai, "GenerativeModel"):
-            model_ids = [
-                "gemini-1.5-flash",
-                "models/gemini-1.5-flash",
-                "gemini-1.5-pro",
-                "models/gemini-1.5-pro",
-                "gemini-2.0-flash",
-                "models/gemini-2.0-flash",
-            ]
+        # Use modern API
+        if not hasattr(genai, "GenerativeModel"):
+            return False, "Unsupported Gemini SDK version (no GenerativeModel found)."
 
-            last_err = None
-            for mid in model_ids:
-                try:
-                    model = genai.GenerativeModel(mid)
-                    resp = model.generate_content(
-                        prompt,
-                        generation_config={"max_output_tokens": max_output_tokens},
-                    )
+        # Use a stable default model; you can change this if needed
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
-                    text = getattr(resp, "text", None)
-                    if text:
-                        return True, str(text).strip()
+        resp = model.generate_content(
+            prompt,
+            generation_config={"max_output_tokens": max_output_tokens},
+        )
 
-                    candidates = getattr(resp, "candidates", None) or []
-                    if candidates:
-                        content = getattr(candidates[0], "content", None)
-                        parts = getattr(content, "parts", None) or []
-                        if parts and hasattr(parts[0], "text"):
-                            return True, str(parts[0].text).strip()
+        text = getattr(resp, "text", None)
+        if text:
+            return True, str(text).strip()
 
-                    return False, "Gemini returned no text output."
-                except Exception as e:
-                    last_err = e
-                    continue
+        candidates = getattr(resp, "candidates", None) or []
+        if candidates:
+            content = getattr(candidates[0], "content", None)
+            parts = getattr(content, "parts", None) or []
+            if parts and hasattr(parts[0], "text"):
+                return True, str(parts[0].text).strip()
 
-            return False, f"Gemini error (model selection failed): {last_err}"
-
-        return False, "Unsupported Gemini SDK version (no GenerativeModel found)."
+        return False, "Gemini returned no text output."
 
     except Exception as e:
+        msg = str(e)
+        # ✅ Give a direct helpful message for your exact error
+        if "reported as leaked" in msg or "API key was reported as leaked" in msg:
+            return False, (
+                "Your Gemini API key has been revoked because it was reported as leaked. "
+                "You MUST generate a new key in Google AI Studio and replace it in .env / Streamlit Secrets."
+            )
         return False, f"Gemini error: {e}"
 
 # --- removed login page entirely (kept function name but routes nowhere) ---
 def page_login_signup():
-    # Login system removed on purpose.
     st.stop()
 
 def page_home():
@@ -215,7 +222,6 @@ def main():
     if "page" not in st.session_state:
         st.session_state.page = "home"
 
-    # ✅ force a default user (no auth)
     if "user" not in st.session_state or not st.session_state.user:
         st.session_state.user = "guest"
 
@@ -228,8 +234,6 @@ def main():
     if st.sidebar.button("➕ New Project"):
         st.session_state.page = "create"
         st.rerun()
-
-    # Logout removed since there is no login now
 
     if st.session_state.page == "home":
         page_home()

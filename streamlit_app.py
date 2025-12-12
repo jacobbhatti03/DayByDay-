@@ -163,13 +163,13 @@ def page_planner():
         st.session_state.page = "home"
         st.rerun()
 
-def main():
-    if "page" not in st.session_state:
-        st.session_state.page = "login"
-    if "user" not in st.session_state:
-        st.session_state.user = None
-    if not st.session_state.user:
-        page_login_signup()
+# def main():
+#     if "page" not in st.session_state:
+#         st.session_state.page = "login"
+#     if "user" not in st.session_state:
+#         st.session_state.user = None
+#     if not st.session_state.user:
+#         page_login_signup()
     else:
         st.sidebar.title("Menu")
         st.sidebar.markdown(f"👤 {st.session_state.user}")

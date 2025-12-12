@@ -5,7 +5,7 @@ import json
 import copy
 from datetime import datetime
 from pathlib import Path
-
+import google.generativeai as genai
 import streamlit as st
 from dotenv import load_dotenv
 

@@ -107,7 +107,7 @@ def call_gemini_text(prompt: str, max_output_tokens: int = 400):
             return False, "Unsupported Gemini SDK version (no GenerativeModel found)."
 
         # Use a stable default model; you can change this if needed
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
 
         resp = model.generate_content(
             prompt,

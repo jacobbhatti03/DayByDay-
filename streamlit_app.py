@@ -8,7 +8,6 @@ from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
-import google.generativeai as genai   # ✅ CORRECT IMPORT
 
 # --------------------------------------------------
 # ENV & STORAGE
@@ -19,23 +18,8 @@ DATA_DIR = Path(os.getenv("DATA_DIR", "daybyday_data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 PROJECTS_FILE = DATA_DIR / "projects.json"
-
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
-# --------------------------------------------------
-# GEMINI CONFIG
-# --------------------------------------------------
-HAS_GENAI = False
-if GEMINI_API_KEY:
-    try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        HAS_GENAI = True
-    except Exception:
-        HAS_GENAI = False
-
-# --------------------------------------------------
-# HELPERS
-# --------------------------------------------------
 def read_json(path: Path, default):
     try:
         if path.exists():
@@ -69,35 +53,51 @@ def delete_project(title):
         write_json(PROJECTS_FILE, projects)
 
 # --------------------------------------------------
-# GEMINI 2.5 FLASH (SINGLE PLAN SOURCE)
+# ✅ PROPER GEMINI CALL (Google Gen AI Python SDK)
 # --------------------------------------------------
+# Uses the officially documented approach:
+# client.models.generate_content(model="gemini-2.5-flash", contents="...") :contentReference[oaicite:2]{index=2}
+try:
+    from google import genai  # <- package: google-genai (new SDK)
+    _HAS_GOOGLE_GENAI = True
+except Exception:
+    genai = None
+    _HAS_GOOGLE_GENAI = False
+
 def call_gemini_text(prompt: str, max_output_tokens: int = 700):
-    if not HAS_GENAI:
-        return False, "Gemini is not configured. Check your API key."
+    if not GEMINI_API_KEY:
+        return False, "GEMINI_API_KEY not found in .env."
+    if not _HAS_GOOGLE_GENAI:
+        return False, "Missing dependency: install with `pip install -U google-genai`."
 
     try:
-        model = genai.GenerativeModel("models/gemini-2.5-flash")
-        response = model.generate_content(
-            prompt,
-            generation_config={
+        client = genai.Client(api_key=GEMINI_API_KEY)
+
+        # ✅ You asked for 2.5 Flash:
+        resp = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config={
                 "max_output_tokens": max_output_tokens,
                 "temperature": 0.7,
                 "top_p": 0.95,
             },
         )
 
-        if hasattr(response, "text") and response.text:
-            return True, response.text.strip()
-
-        candidates = getattr(response, "candidates", []) or []
-        if candidates:
-            parts = getattr(candidates[0].content, "parts", []) or []
-            if parts and hasattr(parts[0], "text"):
-                return True, parts[0].text.strip()
+        # New SDK returns structured output; `.text` is the simplest accessor
+        text = getattr(resp, "text", None)
+        if text:
+            return True, str(text).strip()
 
         return False, "Gemini returned empty output."
 
     except Exception as e:
+        msg = str(e)
+        if "reported as leaked" in msg:
+            return False, (
+                "Your Gemini API key was revoked (reported as leaked). "
+                "Generate a new key and replace it in .env."
+            )
         return False, f"Gemini error: {e}"
 
 # --------------------------------------------------
@@ -167,7 +167,7 @@ PLAN REQUEST:
             st.error(ai_text)
             return
 
-        # Parse AI response
+        # Parse AI response into tasks[8]
         tasks = [[] for _ in range(8)]
         current_day = -1
 

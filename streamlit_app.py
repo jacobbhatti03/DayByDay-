@@ -46,23 +46,9 @@ def ensure_file(path: Path, default):
 ensure_file(USERS_FILE, {})
 ensure_file(PROJECTS_FILE, {})
 
-def signup_local(username, password):
-    users = read_json(USERS_FILE, {})
-    if not username:
-        return False, "Username required"
-    if username in users:
-        return False, "User exists"
-    users[username] = {"password": password}
-    write_json(USERS_FILE, users)
-    return True, "Signed up successfully"
-
-def login_local(username, password):
-    users = read_json(USERS_FILE, {})
-    if username not in users:
-        return False, "User not found"
-    if users[username]["password"] != password:
-        return False, "Incorrect password"
-    return True, "Login successful"
+# password:
+#         return False, "Incorrect password"
+#     return True, "Login successful"
 
 def load_user_projects(username):
     all_proj = read_json(PROJECTS_FILE, {})

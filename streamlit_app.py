@@ -81,22 +81,51 @@ def delete_user_project(username, title):
         del all_proj[username][title]
         write_json(PROJECTS_FILE, all_proj)
 
+# ✅ FIXED: Gemini call using modern google.generativeai API
 def call_gemini_text(prompt: str, max_output_tokens: int = 400):
     if not HAS_GENAI or not GEMINI_API_KEY:
         return False, "Gemini not configured. Add GEMINI_API_KEY in .env."
+
     try:
-        if hasattr(genai, "models") and hasattr(genai.models, "generate_text"):
-            resp = genai.models.generate_text(model="gemini-1.0", prompt=prompt, max_output_tokens=max_output_tokens)
-            text = getattr(resp, "text", None)
-            if text is None and isinstance(resp, dict):
-                text = resp.get("content") or resp.get("output")
-            return True, str(text).strip()
-        elif hasattr(genai, "chat") and hasattr(genai.chat, "create"):
-            resp = genai.chat.create(model="gemini-1.0", messages=[{"role": "user", "content": prompt}])
-            text = getattr(resp, "text", None) or getattr(resp, "output", None)
-            return True, str(text).strip()
-        else:
-            return False, "Unsupported Gemini SDK version"
+        if hasattr(genai, "GenerativeModel"):
+            model_ids = [
+                "gemini-1.5-flash",
+                "models/gemini-1.5-flash",
+                "gemini-1.5-pro",
+                "models/gemini-1.5-pro",
+                "gemini-2.0-flash",
+                "models/gemini-2.0-flash",
+            ]
+
+            last_err = None
+            for mid in model_ids:
+                try:
+                    model = genai.GenerativeModel(mid)
+                    resp = model.generate_content(
+                        prompt,
+                        generation_config={"max_output_tokens": max_output_tokens},
+                    )
+
+                    text = getattr(resp, "text", None)
+                    if text:
+                        return True, str(text).strip()
+
+                    candidates = getattr(resp, "candidates", None) or []
+                    if candidates:
+                        content = getattr(candidates[0], "content", None)
+                        parts = getattr(content, "parts", None) or []
+                        if parts and hasattr(parts[0], "text"):
+                            return True, str(parts[0].text).strip()
+
+                    return False, "Gemini returned no text output."
+                except Exception as e:
+                    last_err = e
+                    continue
+
+            return False, f"Gemini error (model selection failed): {last_err}"
+
+        return False, "Unsupported Gemini SDK version (no GenerativeModel found)."
+
     except Exception as e:
         return False, f"Gemini error: {e}"
 

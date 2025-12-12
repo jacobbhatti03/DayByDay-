@@ -100,32 +100,6 @@ def call_gemini_text(prompt: str, max_output_tokens: int = 400):
     except Exception as e:
         return False, f"Gemini error: {e}"
 
-def page_login_signup():
-    st.title("DayByDay — 8-Day Planner")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Login")
-        u = st.text_input("Username", key="login_user")
-        p = st.text_input("Password", type="password", key="login_pass")
-        if st.button("Login"):
-            ok, msg = login_local(u.strip(), p)
-            if ok:
-                st.session_state.user = u.strip()
-                st.session_state.page = "home"
-                st.rerun()
-            else:
-                st.error(msg)
-    with c2:
-        st.subheader("Sign Up")
-        u2 = st.text_input("New username", key="signup_user")
-        p2 = st.text_input("New password", type="password", key="signup_pass")
-        if st.button("Create Account"):
-            ok, msg = signup_local(u2.strip(), p2)
-            if ok:
-                st.success("Account created. Please log in.")
-            else:
-                st.error(msg)
-
 def page_home():
     st.header(f"Welcome, {st.session_state.user}")
     projects = load_user_projects(st.session_state.user)

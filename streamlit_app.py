@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 import streamlit as st
+import google.generativeai as genai 
 
 # Load .env (works locally). On Streamlit Cloud, prefer st.secrets.
 load_dotenv()
